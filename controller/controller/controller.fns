@@ -1,0 +1,22 @@
+; controller.asm
+LoadSpritesLoop                  = $C059
+LoadPalettes                     = $C03D
+LatchController                  = $C07B
+Forever                          = $C06E
+palette                          = $E000
+ReadLeftDone                     = $C13D
+LoadPalettesLoop                 = $C04C
+ReadUp                           = $C091
+ReadDown                         = $C0BC
+ReadRightDone                    = $C112
+ReadDownDone                     = $C0E7
+LoadSprites                      = $C057
+vblankwait1                      = $C014
+ReadUpDone                       = $C0BC
+vblankwait2                      = $C038
+clrmem                           = $C019
+RESET                            = $C000
+sprites                          = $E020
+ReadLeft                         = $C112
+NMI                              = $C071
+ReadRight                        = $C0E7
