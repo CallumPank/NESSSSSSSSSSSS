@@ -1,0 +1,7 @@
+; .\comp310.asm
+vblankwait1                      = $C017
+vblankwait2                      = $C035
+clrmem                           = $C01D
+RESET                            = $C000
+NMI                              = $C04F
+forever                          = $C04C
