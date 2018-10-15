@@ -8,7 +8,7 @@
 PPUCTRL   = $2000
 PPUMASK   = $2001
 PPUSTATUS = $2002
-OAMDDR    = $2003
+OAMADDR   = $2003
 OAMDATA   = $2004
 PPUSCROLL = $2005
 PPUADDR   = $2006
@@ -64,6 +64,10 @@ clrmem:
     ; display list to be copied to OAM.  OAM needs to be initialized to
     ; $EF-$FF, not 0, or you'll get a bunch of garbage sprites at (0, 0).
 
+    LDA #$FF
+    STA $200,x
+
+
     INX
     BNE clrmem
 
@@ -87,8 +91,26 @@ vblankwait2:
 
 
     ;Wrting the background colour
-    LDA #$0d
+    LDA #$1d
     STA PPUDATA
+
+    ;Write Sprite Data
+    LDA #120    ; Y position
+    STA $0200
+    LDA #0      ; Tile Number
+    STA $0201
+    LDA #0      ; Attributes
+    STA $0202
+    LDA #128    ;X position
+    STA $0203
+
+    LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
+    STA PPUCTRL
+
+    LDA #%00010000 ;Enable sprites
+    STA PPUMASK
+
+
     ;enter an infinite loop
 
 
@@ -99,6 +121,13 @@ forever:
 
 ; NMI is called on every frame
 NMI:
+    LDA #0
+    STA OAMADDR
+    LDA #$02
+    STA OAMDMA
+
+
+
     RTI         ; Return from interrupt
 
 ; ---------------------------------------------------------------------------
