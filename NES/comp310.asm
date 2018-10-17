@@ -104,6 +104,15 @@ vblankwait2:
     LDA #128    ;X position
     STA $0203
 
+    LDA #120    ; Y position
+    STA $0204
+    LDA #0      ; Tile Number
+    STA $0205
+    LDA #0      ; Attributes
+    STA $0206
+    LDA #128    ;X position
+    STA $0207
+
     LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
     STA PPUCTRL
 
@@ -121,6 +130,18 @@ forever:
 
 ; NMI is called on every frame
 NMI:
+    ;Increment x value, ADC = Speed
+    LDA $0200
+    CLC
+    ADC #1
+    STA $0200
+
+
+    LDA $0207
+    CLC
+    ADC #1
+    STA $0207
+
     LDA #0
     STA OAMADDR
     LDA #$02
