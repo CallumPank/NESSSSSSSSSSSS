@@ -14,6 +14,8 @@ PPUSCROLL = $2005
 PPUADDR   = $2006
 PPUDATA   = $2007
 OAMDMA    = $4014
+JOYPAD1   = $4016
+JOYPAD2   = $4017
 
     .bank 0
     .org $C000
@@ -94,6 +96,17 @@ vblankwait2:
     LDA #$1d
     STA PPUDATA
 
+  
+    ;Wrting the palette colour
+    LDA #$30
+    STA PPUDATA
+    LDA #$26
+    STA PPUDATA
+    LDA #$05
+    STA PPUDATA
+
+
+
     ;Write Sprite Data
     LDA #120    ; Y position
     STA $0200
@@ -104,14 +117,7 @@ vblankwait2:
     LDA #128    ;X position
     STA $0203
 
-    LDA #120    ; Y position
-    STA $0204
-    LDA #0      ; Tile Number
-    STA $0205
-    LDA #0      ; Attributes
-    STA $0206
-    LDA #128    ;X position
-    STA $0207
+    
 
     LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
     STA PPUCTRL
@@ -130,18 +136,35 @@ forever:
 
 ; NMI is called on every frame
 NMI:
-    ;Increment x value, ADC = Speed
+    ;Initialise controller 1
+    LDA #1
+    STA JOYPAD1
+    LDA #0
+    STA JOYPAD1
+
+    ;Read A button
+    LDA JOYPAD1
+    AND #%00000001
+    BEQ ReadA_Done
+    LDA $0203
+    CLC
+    ADC #1
+    STA $0203
+
+ReadA_Done:
+
+;Read B button
+    LDA JOYPAD1
+    AND #%00000001
+    BEQ ReadB_Done
     LDA $0200
     CLC
     ADC #1
     STA $0200
 
+ReadB_Done:
 
-    LDA $0207
-    CLC
-    ADC #1
-    STA $0207
-
+    ;Copy sprite data to PPU    
     LDA #0
     STA OAMADDR
     LDA #$02
@@ -163,4 +186,5 @@ NMI:
 
     .bank 2
     .org $0000
+    .incbin "comp310"
     ; TODO: add graphics
