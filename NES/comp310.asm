@@ -17,6 +17,23 @@ OAMDMA    = $4014
 JOYPAD1   = $4016
 JOYPAD2   = $4017
 
+BUTTON_A      = %10000000
+BUTTON_B      = %01000000
+BUTTON_Select = %00100000
+BUTTON_Start  = %00010000
+BUTTON_Up     = %00001000
+BUTTON_Down   = %00000100
+BUTTON_Left   = %00000010
+BUTTON_Right  = %00000001
+
+
+
+    .rsset $0010
+joypad1_state_      .rs 1
+
+
+
+
     .bank 0
     .org $C000
 
@@ -142,9 +159,20 @@ NMI:
     LDA #0
     STA JOYPAD1
 
-    ;Read A button
+    ;Read Joypad state
+    LDX #0
+    STX  joypad1_state_
+ReadController:
     LDA JOYPAD1
-    AND #%00000001
+    LSR A
+    ROL joypad1_state_
+    INX
+    CPX #8
+    BNE ReadController
+
+    ;React to A button
+    LDA joypad1_state_a
+    AND %10000000
     BEQ ReadA_Done
     LDA $0203
     CLC
@@ -153,9 +181,9 @@ NMI:
 
 ReadA_Done:
 
-;Read B button
-    LDA JOYPAD1
-    AND #%00000001
+Read B button
+    LDA joypad1_state_
+    AND %10000000
     BEQ ReadB_Done
     LDA $0200
     CLC
