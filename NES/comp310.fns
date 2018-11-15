@@ -1,10 +1,12 @@
 ; .\comp310.asm
-ReadB_Done                       = $C0E0
-ReadA_Done                       = $C0D2
+ReadDown_Done                    = $C0D0
+ReadLeft_Done                    = $C0F0
+ReadRight_Done                   = $C0C0
 vblankwait1                      = $C017
 vblankwait2                      = $C03A
 clrmem                           = $C01D
 RESET                            = $C000
 NMI                              = $C095
-ReadController                   = $C0A1
+ReadController                   = $C0A4
+ReadUp_Done                      = $C0E0
 forever                          = $C092

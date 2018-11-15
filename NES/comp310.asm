@@ -30,10 +30,8 @@ BUTTON_Right  = %00000001
 
 
     .rsset $0010
-joypad1_state_a      .rs 1
-joypad1_state_b      .rs 1
-joypad1_state_select .rs 1
-joypad1_state_start  .rs 1
+joypad1_state      .rs 1
+
 
 
 
@@ -182,44 +180,59 @@ NMI:
 
     ;Read Joypad state
     LDX #0
+    STX joypad1_state
 ReadController:
     LDA JOYPAD1
-    AND #%00000001
-    STA joypad1_state_a
+    LSR A
+    ROL joypad1_state
+    INX
+    CPX #8
+    BNE ReadController
 
-    LDA JOYPAD1
-    AND #%00000001
-    STA joypad1_state_b
-
-    LDA JOYPAD1
-    AND #%00000001
-    STA joypad1_state_select
-
-    LDA JOYPAD1
-    AND #%00000001
-    STA joypad1_state_start
-
-
-    ;React to A button
-    LDA joypad1_state_a
-    AND %10000000
-    BEQ ReadA_Done
+    ;React to right button
+    LDA joypad1_state
+    AND #BUTTON_Right
+    BEQ ReadRight_Done
     LDA $0203
     CLC
     ADC #1
     STA $0203
 
-ReadA_Done:
 
-    ;Read B button
-    LDA joypad1_state_b
-    BEQ ReadB_Done
+ReadRight_Done:
+
+    ;Read down button
+    LDA joypad1_state
+    AND #BUTTON_Down
+    BEQ ReadDown_Done
     LDA $0200
     CLC
     ADC #1
     STA $0200
 
-ReadB_Done:
+ReadDown_Done:
+
+;Read up button
+    LDA joypad1_state
+    AND #BUTTON_Up
+    BEQ ReadUp_Done
+    LDA $0200
+    SEC
+    SBC #1
+    STA $0200
+
+ReadUp_Done:
+
+;Read left button
+    LDA joypad1_state
+    AND #BUTTON_Left
+    BEQ ReadLeft_Done
+    LDA $0203
+    SEC
+    SBC #1
+    STA $0203
+
+ReadLeft_Done:
 
     ;Copy sprite data to PPU
 
