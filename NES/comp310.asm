@@ -3,7 +3,7 @@
     .inesmap 0
     .inesmir 1
 
-; ---------------------------------------------------------------------------
+
 
 PPUCTRL   = $2000
 PPUMASK   = $2001
@@ -17,8 +17,7 @@ OAMDMA    = $4014
 JOYPAD1   = $4016
 JOYPAD2   = $4017
 
-<<<<<<< HEAD
-=======
+
 BUTTON_A      = %10000000
 BUTTON_B      = %01000000
 BUTTON_Select = %00100000
@@ -31,10 +30,12 @@ BUTTON_Right  = %00000001
 
 
     .rsset $0010
-joypad1_state_      .rs 1
+joypad1_state_a      .rs 1
+joypad1_state_b      .rs 1
+joypad1_state_select .rs 1
+joypad1_state_start  .rs 1
 
 
->>>>>>> f8c68e3355e44572e6ef54f49438d3739d7ca5e4
 
 
     .bank 0
@@ -127,11 +128,11 @@ vblankwait2:
     LDA #$26
     STA PPUDATA
 
-<<<<<<< HEAD
+
 
     ;Write Sprite Data 1
-=======
-  
+
+
     ;Wrting the palette colour
     LDA #$30
     STA PPUDATA
@@ -143,7 +144,7 @@ vblankwait2:
 
 
     ;Write Sprite Data
->>>>>>> f8c68e3355e44572e6ef54f49438d3739d7ca5e4
+
     LDA #120    ; Y position
     STA $0200
     LDA #0      ; Tile Number
@@ -153,10 +154,7 @@ vblankwait2:
     LDA #128    ;X position
     STA $0203
 
-<<<<<<< HEAD
-=======
-    
->>>>>>> f8c68e3355e44572e6ef54f49438d3739d7ca5e4
+
 
     LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
     STA PPUCTRL
@@ -175,35 +173,32 @@ forever:
 
 ; NMI is called on every frame
 NMI:
-<<<<<<< HEAD
-    ;Intialise controller 1
-=======
     ;Initialise controller 1
->>>>>>> f8c68e3355e44572e6ef54f49438d3739d7ca5e4
+
     LDA #1
     STA JOYPAD1
     LDA #0
     STA JOYPAD1
-<<<<<<< HEAD
-
-    ;Read A button
-    LDA JOYPAD1
-    STA JOYPAD1VAL
-
-
-    ;Copy sprite data to the PPU
-=======
 
     ;Read Joypad state
     LDX #0
-    STX  joypad1_state_
 ReadController:
     LDA JOYPAD1
-    LSR A
-    ROL joypad1_state_
-    INX
-    CPX #8
-    BNE ReadController
+    AND #%00000001
+    STA joypad1_state_a
+
+    LDA JOYPAD1
+    AND #%00000001
+    STA joypad1_state_b
+
+    LDA JOYPAD1
+    AND #%00000001
+    STA joypad1_state_select
+
+    LDA JOYPAD1
+    AND #%00000001
+    STA joypad1_state_start
+
 
     ;React to A button
     LDA joypad1_state_a
@@ -216,9 +211,8 @@ ReadController:
 
 ReadA_Done:
 
-Read B button
-    LDA joypad1_state_
-    AND %10000000
+    ;Read B button
+    LDA joypad1_state_b
     BEQ ReadB_Done
     LDA $0200
     CLC
@@ -227,8 +221,8 @@ Read B button
 
 ReadB_Done:
 
-    ;Copy sprite data to PPU    
->>>>>>> f8c68e3355e44572e6ef54f49438d3739d7ca5e4
+    ;Copy sprite data to PPU
+
     LDA #0
     STA OAMADDR
     LDA #$02
@@ -250,9 +244,7 @@ ReadB_Done:
 
     .bank 2
     .org $0000
-<<<<<<< HEAD
+
     .incbin "comp310Sprite"
-=======
-    .incbin "comp310"
->>>>>>> f8c68e3355e44572e6ef54f49438d3739d7ca5e4
+
     ; TODO: add graphics
