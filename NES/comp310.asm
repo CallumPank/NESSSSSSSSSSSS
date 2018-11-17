@@ -31,9 +31,11 @@ BUTTON_Right  = %00000001
 
     .rsset $0010
 joypad1_state      .rs 1
+bullet_alive       .rs 1
 
     .rsset $0200
 sprite_player      .rs 4
+sprite_bullet      .rs 4
 
     .rsset $0000
 SPRITE_Y           .rs 1
@@ -118,7 +120,7 @@ vblankwait2:
 
 
     ;Wrting the background colour
-    LDA #$0f
+    LDA #$03
     STA PPUDATA
 
 
@@ -236,8 +238,45 @@ ReadUp_Done:
 
 ReadLeft_Done:
 
-    ;Copy sprite data to PPU
+    ;react to A button
+    LDA joypad1_state
+    AND #BUTTON_A
+    BEQ ReadA_Done
 
+    ;Spawn Bullet if one is not active
+    LDA bullet_alive
+    BNE ReadA_Done
+    ;if no bullet active spawn one
+    LDA #1
+    STA bullet_alive
+    LDA sprite_player + SPRITE_Y   ; Y position of bullet
+    STA sprite_bullet + SPRITE_Y
+    LDA #0      ; Tile Number
+    STA sprite_bullet + SPRITE_TILE
+    LDA #0      ; Attributes
+    STA sprite_bullet + SPRITE_ATTRIBUTE
+    LDA sprite_player + SPRITE_X    ;X position of bullet
+    STA sprite_bullet + SPRITE_X
+
+ReadA_Done:
+
+    ;bullet update
+    LDA bullet_alive
+    BEQ UpdateBullet_Done
+    LDA sprite_bullet + SPRITE_Y
+    SEC
+    SBC #1
+    STA sprite_bullet + SPRITE_Y
+    BCS UpdateBullet_Done
+    ;if carry flag is clear, bullet has left the screen, destroy it
+    LDA #0
+    STA bullet_alive
+UpdateBullet_Done:
+
+
+
+
+    ;Copy sprite data to PPU
     LDA #0
     STA OAMADDR
     LDA #$02
