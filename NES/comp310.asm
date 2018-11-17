@@ -32,8 +32,14 @@ BUTTON_Right  = %00000001
     .rsset $0010
 joypad1_state      .rs 1
 
+    .rsset $0200
+sprite_player      .rs 4
 
-
+    .rsset $0000
+SPRITE_Y           .rs 1
+SPRITE_TILE        .rs 1
+SPRITE_ATTRIBUTE   .rs 1
+SPRITE_X           .rs 1
 
 
     .bank 0
@@ -127,10 +133,6 @@ vblankwait2:
     STA PPUDATA
 
 
-
-    ;Write Sprite Data 1
-
-
     ;Wrting the palette colour
     LDA #$30
     STA PPUDATA
@@ -144,13 +146,13 @@ vblankwait2:
     ;Write Sprite Data
 
     LDA #120    ; Y position
-    STA $0200
+    STA sprite_player + SPRITE_Y
     LDA #0      ; Tile Number
-    STA $0201
+    STA sprite_player + SPRITE_TILE
     LDA #0      ; Attributes
-    STA $0202
+    STA sprite_player + SPRITE_ATTRIBUTE
     LDA #128    ;X position
-    STA $0203
+    STA sprite_player + SPRITE_X
 
 
 
@@ -193,10 +195,10 @@ ReadController:
     LDA joypad1_state
     AND #BUTTON_Right
     BEQ ReadRight_Done
-    LDA $0203
+    LDA sprite_player + SPRITE_X
     CLC
     ADC #1
-    STA $0203
+    STA sprite_player + SPRITE_X
 
 
 ReadRight_Done:
@@ -205,10 +207,10 @@ ReadRight_Done:
     LDA joypad1_state
     AND #BUTTON_Down
     BEQ ReadDown_Done
-    LDA $0200
+    LDA sprite_player + SPRITE_Y
     CLC
     ADC #1
-    STA $0200
+    STA sprite_player + SPRITE_Y
 
 ReadDown_Done:
 
@@ -216,10 +218,10 @@ ReadDown_Done:
     LDA joypad1_state
     AND #BUTTON_Up
     BEQ ReadUp_Done
-    LDA $0200
+    LDA sprite_player + SPRITE_Y
     SEC
     SBC #1
-    STA $0200
+    STA sprite_player + SPRITE_Y
 
 ReadUp_Done:
 
@@ -227,10 +229,10 @@ ReadUp_Done:
     LDA joypad1_state
     AND #BUTTON_Left
     BEQ ReadLeft_Done
-    LDA $0203
+    LDA sprite_player + SPRITE_X
     SEC
     SBC #1
-    STA $0203
+    STA sprite_player + SPRITE_X
 
 ReadLeft_Done:
 
