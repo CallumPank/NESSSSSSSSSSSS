@@ -157,7 +157,6 @@ vblankwait2:
     STA sprite_player + SPRITE_X
 
 
-
     LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
     STA PPUCTRL
 
@@ -251,7 +250,7 @@ ReadLeft_Done:
     STA bullet_alive
     LDA sprite_player + SPRITE_Y   ; Y position of bullet
     STA sprite_bullet + SPRITE_Y
-    LDA #0      ; Tile Number
+    LDA #1      ; Tile Number
     STA sprite_bullet + SPRITE_TILE
     LDA #0      ; Attributes
     STA sprite_bullet + SPRITE_ATTRIBUTE
