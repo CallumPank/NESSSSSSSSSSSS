@@ -29,13 +29,23 @@ BUTTON_Right  = %00000001
 
 
 
-    .rsset $0010
+    .rsset $0000
 joypad1_state      .rs 1
 bullet_alive       .rs 1
+temp_x             .rs 1
+temp_y             .rs 1
+
+Enemy_Team_Width = 1
+Enemy_Team_Height = 3
+NUM_Enemies = Enemy_Team_Width * Enemy_Team_Height
+Enemy_Spacing = 10
 
     .rsset $0200
 sprite_player      .rs 4
 sprite_bullet      .rs 4
+sprite_zombie      .rs 4 * NUM_Enemies
+sprite_zombie_1      .rs 4 * NUM_Enemies
+sprite_zombie_2      .rs 4 * NUM_Enemies
 
     .rsset $0000
 SPRITE_Y           .rs 1
@@ -119,7 +129,7 @@ vblankwait2:
     STA PPUADDR
 
 
-    ;Wrting the background colour
+    ;Writing the background colour
     LDA #$03
     STA PPUDATA
 
@@ -156,6 +166,73 @@ vblankwait2:
     LDA #128    ;X position
     STA sprite_player + SPRITE_X
 
+    ;Initialise zombie 0
+    LDX #0
+    LDA #Enemy_Team_Height * Enemy_Spacing
+    STA temp_y
+InitZombie_LoopY:
+    LDA #Enemy_Team_Width * Enemy_Spacing
+    STA temp_x
+InitZombie_LoopX:
+    STA sprite_zombie+SPRITE_X, x
+    LDA temp_y
+    STA sprite_zombie+SPRITE_Y, x
+    LDA #2
+    STA sprite_zombie+SPRITE_TILE, x
+    LDA #0
+    STA sprite_zombie+SPRITE_ATTRIBUTE, x
+    ; increment x by 4
+    TXA
+    CLC
+    ADC #4
+    TAX
+    ; loop check for x value
+    LDA temp_x
+    SEC
+    SBC #Enemy_Spacing
+    STA temp_x
+    BNE InitZombie_LoopX
+    ; loop check for y value
+    LDA temp_y
+    SEC
+    SBC #Enemy_Spacing
+    STA temp_y
+    BNE InitZombie_LoopY
+
+    ;Initialise zombie 1
+    LDX #0
+    LDA #Enemy_Team_Height * Enemy_Spacing
+    STA temp_y
+InitZombie_0_LoopY:
+    LDA #Enemy_Team_Width * Enemy_Spacing
+    STA temp_x
+InitZombie_0_LoopX:
+    STA sprite_zombie_1+SPRITE_X, x
+    LDA temp_y
+    STA sprite_zombie_1+SPRITE_Y, x
+    LDA #3
+    STA sprite_zombie_1+SPRITE_TILE, x
+    LDA #0
+    STA sprite_zombie_1+SPRITE_ATTRIBUTE, x
+    ; increment x by 4
+    TXA
+    CLC
+    ADC #4
+    TAX
+    ; loop check for x value
+    LDA temp_x
+    SEC
+    SBC #Enemy_Spacing
+    STA temp_x
+    BNE InitZombie_0_LoopX
+    ; loop check for y value
+    LDA temp_y
+    SEC
+    SBC #Enemy_Spacing
+    STA temp_y
+    BNE InitZombie_0_LoopY
+
+
 
     LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
     STA PPUCTRL
@@ -174,6 +251,11 @@ forever:
 
 ; NMI is called on every frame
 NMI:
+    LDA sprite_zombie + sprite_player
+    CLC
+    ADC #1
+    STA sprite_zombie + sprite_player
+
     ;Initialise controller 1
 
     LDA #1
@@ -272,8 +354,44 @@ ReadA_Done:
     STA bullet_alive
 UpdateBullet_Done:
 
+  ;Update zombies
+  LDX #(NUM_Enemies-1) * 4
+UpdateEnemies_Loop:
+  LDA sprite_zombie+SPRITE_X, x
+  CLC
+  ADC #1
+  STA sprite_zombie+SPRITE_X, x
+  DEX
+  DEX
+  DEX
+  DEX
+  BPL UpdateEnemies_Loop
 
+    ;check collision between enemy and bullet
+    ; LDA sprite_zombie + SPRITE_X, x ; calculate x postion of enemy - width of bullet
+    ; SEC
+    ; SBC #8                          ; Assume width is 8x8 sprites
+    ; CMP sprite_bullet + SPRITE_X    ; compare with x bullet
+    ; BCS UpdateEnemies_NoCollision
+    ; CLC
+    ; ADC #16
+    ; CMP sprite_bullet + SPRITE_X
+    ; BCC UpdateEnemies_NoCollision
+    ;
+    ; LDA sprite_zombie + SPRITE_Y, x ; calculate y postion of enemy - width of bullet
+    ; SEC
+    ; SBC #8                          ; Assume width is 8x8 sprites
+    ; CMP sprite_bullet + SPRITE_Y    ; compare with y bullet
+    ; BCS UpdateEnemies_NoCollision
+    ; CLC
+    ; ADC #16
+    ; CMP sprite_bullet + SPRITE_Y
+    ; BCC UpdateEnemies_NoCollision
+    ; ;Handle collision
+    ; LDA #0
+    ; STA bullet_alive                ;Destroy Bullet
 
+UpdateEnemies_NoCollision:
 
     ;Copy sprite data to PPU
     LDA #0
@@ -298,6 +416,6 @@ UpdateBullet_Done:
     .bank 2
     .org $0000
 
-    .incbin "comp310Sprite"
+    .incbin "spriteMan"
 
     ; TODO: add graphics
