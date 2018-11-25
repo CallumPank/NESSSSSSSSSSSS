@@ -27,18 +27,18 @@ BUTTON_Down   = %00000100
 BUTTON_Left   = %00000010
 BUTTON_Right  = %00000001
 
-
+Enemy_Team_Width = 1
+Enemy_Team_Height = 3
+NUM_Enemies = Enemy_Team_Width * Enemy_Team_Height
+Enemy_Spacing = 10
 
     .rsset $0000
 joypad1_state      .rs 1
 bullet_alive       .rs 1
 temp_x             .rs 1
 temp_y             .rs 1
+zombie_info        .rs 4 * NUM_Enemies
 
-Enemy_Team_Width = 1
-Enemy_Team_Height = 3
-NUM_Enemies = Enemy_Team_Width * Enemy_Team_Height
-Enemy_Spacing = 10
 
     .rsset $0200
 sprite_player      .rs 4
@@ -53,6 +53,8 @@ SPRITE_TILE        .rs 1
 SPRITE_ATTRIBUTE   .rs 1
 SPRITE_X           .rs 1
 
+    .rsset $000
+Zombie_Direction    .rs 1
 
     .bank 0
     .org $C000
@@ -181,6 +183,8 @@ InitZombie_LoopX:
     STA sprite_zombie+SPRITE_TILE, x
     LDA #0
     STA sprite_zombie+SPRITE_ATTRIBUTE, x
+    LDA #1
+    STA zombie_info + Zombie_Direction, x
     ; increment x by 4
     TXA
     CLC
@@ -359,8 +363,20 @@ UpdateBullet_Done:
 UpdateEnemies_Loop:
   LDA sprite_zombie+SPRITE_X, x
   CLC
-  ADC #1
+  ADC zombie_info + Zombie_Direction, x
   STA sprite_zombie+SPRITE_X, x
+  CMP #256 - Enemy_Spacing
+  BCS UpdateZombies_Reverse
+  CMP #Enemy_Spacing
+  BCC UpdateZombies_Reverse
+  JMP UpdateZombies_NoReverse
+UpdateZombies_Reverse:
+  ;Reverse direction
+  LDA #0
+  SEC
+  SBC zombie_info + Zombie_Direction, x
+  STA zombie_info + Zombie_Direction, x
+UpdateZombies_NoReverse:
   DEX
   DEX
   DEX
@@ -368,28 +384,28 @@ UpdateEnemies_Loop:
   BPL UpdateEnemies_Loop
 
     ;check collision between enemy and bullet
-    ; LDA sprite_zombie + SPRITE_X, x ; calculate x postion of enemy - width of bullet
-    ; SEC
-    ; SBC #8                          ; Assume width is 8x8 sprites
-    ; CMP sprite_bullet + SPRITE_X    ; compare with x bullet
-    ; BCS UpdateEnemies_NoCollision
-    ; CLC
-    ; ADC #16
-    ; CMP sprite_bullet + SPRITE_X
-    ; BCC UpdateEnemies_NoCollision
-    ;
-    ; LDA sprite_zombie + SPRITE_Y, x ; calculate y postion of enemy - width of bullet
-    ; SEC
-    ; SBC #8                          ; Assume width is 8x8 sprites
-    ; CMP sprite_bullet + SPRITE_Y    ; compare with y bullet
-    ; BCS UpdateEnemies_NoCollision
-    ; CLC
-    ; ADC #16
-    ; CMP sprite_bullet + SPRITE_Y
-    ; BCC UpdateEnemies_NoCollision
-    ; ;Handle collision
-    ; LDA #0
-    ; STA bullet_alive                ;Destroy Bullet
+    LDA sprite_zombie + SPRITE_X, x ; calculate x postion of enemy - width of bullet
+    SEC
+    SBC #8                          ; Assume width is 8x8 sprites
+    CMP sprite_bullet + SPRITE_X    ; compare with x bullet
+    BCS UpdateEnemies_NoCollision
+    CLC
+    ADC #16
+    CMP sprite_bullet + SPRITE_X
+    BCC UpdateEnemies_NoCollision
+
+    LDA sprite_zombie + SPRITE_Y, x ; calculate y postion of enemy - width of bullet
+    SEC
+    SBC #8                          ; Assume width is 8x8 sprites
+    CMP sprite_bullet + SPRITE_Y    ; compare with y bullet
+    BCS UpdateEnemies_NoCollision
+    CLC
+    ADC #16
+    CMP sprite_bullet + SPRITE_Y
+    BCC UpdateEnemies_NoCollision
+    ; Handle collision
+    LDA #0
+    STA bullet_alive                ;Destroy Bullet
 
 UpdateEnemies_NoCollision:
 
