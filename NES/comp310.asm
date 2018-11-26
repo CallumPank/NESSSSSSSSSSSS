@@ -33,14 +33,15 @@ NUM_Enemies = Enemy_Team_Width * Enemy_Team_Height
 Enemy_Spacing = 10
 
     .rsset $0000
-joypad1_state      .rs 1
-bullet_alive       .rs 1
-temp_x             .rs 1
-temp_y             .rs 1
-zombie_info        .rs 4 * NUM_Enemies
-nametable_address  .rs 2
-scroll_x           .rs 1
-
+joypad1_state       .rs 1
+bullet_alive        .rs 1
+temp_x              .rs 1
+temp_y              .rs 1
+zombie_info         .rs 4 * NUM_Enemies
+nametable_address   .rs 2
+scroll_x            .rs 1
+player_speed        .rs 2   ; pixels per frame -- 16 bits
+player_sub_position .rs 1
 
     .rsset $0200
 sprite_player      .rs 4
@@ -58,6 +59,11 @@ SPRITE_X           .rs 1
     .rsset $000
 Zombie_Direction    .rs 1
 Zombie_Alive        .rs 1
+
+Gravity              = 1*256      ; subpixels per frame ^2
+Jump_Speed           = -(3 * 256 + 128)   ; SubPixels per frame
+Screen_bottom_Y      = 224
+
 
     .bank 0
     .org $C000
@@ -380,16 +386,18 @@ ReadController:
     ADC #1
     STA sprite_player + SPRITE_X
 
+
 ReadRight_Done:
 
-    ;Read down button
-    LDA joypad1_state
-    AND #BUTTON_Down
-    BEQ ReadDown_Done
-    LDA sprite_player + SPRITE_Y
-    CLC
-    ADC #1
-    STA sprite_player + SPRITE_Y
+    ; ;Read down button
+    ; LDA joypad1_state
+    ; AND #BUTTON_Down
+    ; BEQ ReadDown_Done
+    ; LDA sprite_player + SPRITE_Y
+    ; CLC
+    ; ADC #1
+    ; STA sprite_player + SPRITE_Y
+
 
 ReadDown_Done:
 
@@ -397,10 +405,37 @@ ReadDown_Done:
     LDA joypad1_state
     AND #BUTTON_Up
     BEQ ReadUp_Done
+
+    LDA player_speed ; Low 8 bits
+    CLC
+    ADC #LOW(Gravity)
+    STA player_speed
+    LDA player_speed+1 ;High 8 bits
+    ADC #HIGH(Gravity)
+    STA player_speed+1
+
+    LDA player_sub_position ; Low 8 bits
+    CLC
+    ADC player_speed
+    STA player_sub_position
+
     LDA sprite_player + SPRITE_Y
-    SEC
-    SBC #1
+    ADC player_speed+1
     STA sprite_player + SPRITE_Y
+
+    LDA #LOW(Jump_Speed)
+    STA player_speed
+    LDA #HIGH(Jump_Speed)
+    STA player_speed + 1
+
+    ;check bottom of the screen
+    CMP #Screen_bottom_Y
+    BCC UpdatePlayer_NoClamp
+    LDA #Screen_bottom_Y-1
+    STA sprite_player+SPRITE_Y
+
+
+UpdatePlayer_NoClamp:
 
 ReadUp_Done:
 
