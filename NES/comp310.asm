@@ -27,18 +27,20 @@ BUTTON_Down   = %00000100
 BUTTON_Left   = %00000010
 BUTTON_Right  = %00000001
 
-
+Enemy_Team_Width = 1
+Enemy_Team_Height = 3
+NUM_Enemies = Enemy_Team_Width * Enemy_Team_Height
+Enemy_Spacing = 10
 
     .rsset $0000
 joypad1_state      .rs 1
 bullet_alive       .rs 1
 temp_x             .rs 1
 temp_y             .rs 1
+zombie_info        .rs 4 * NUM_Enemies
+nametable_address  .rs 2
+scroll_x           .rs 1
 
-Enemy_Team_Width = 1
-Enemy_Team_Height = 3
-NUM_Enemies = Enemy_Team_Width * Enemy_Team_Height
-Enemy_Spacing = 10
 
     .rsset $0200
 sprite_player      .rs 4
@@ -53,6 +55,9 @@ SPRITE_TILE        .rs 1
 SPRITE_ATTRIBUTE   .rs 1
 SPRITE_X           .rs 1
 
+    .rsset $000
+Zombie_Direction    .rs 1
+Zombie_Alive        .rs 1
 
     .bank 0
     .org $C000
@@ -122,12 +127,11 @@ vblankwait2:
     ;Resets the PPU
     LDA PPUSTATUS
 
-    ; Writing address $3F10 to the PPU which deals with background colour
+    ; Writing address $3F10 (background palette) to the PPU which deals with background colour
     LDA #$3F
     STA PPUADDR
     LDA #$10
     STA PPUADDR
-
 
     ;Writing the background colour
     LDA #$03
@@ -144,13 +148,28 @@ vblankwait2:
     LDA #$26
     STA PPUDATA
 
+    ; Writing address $3F00 (background palette) to the PPU which deals with background colour
+    LDA #$3F
+    STA PPUADDR
+    LDA #$00
+    STA PPUADDR
+
+    ;Writing the background colour
+    LDA #$0F
+    STA PPUDATA
+    LDA #$24
+    STA PPUDATA
+    LDA #$11
+    STA PPUDATA
+    LDA #$0D
+    STA PPUDATA
 
     ;Wrting the palette colour
-    LDA #$30
+    LDA #$0D
     STA PPUDATA
-    LDA #$26
+    LDA #$11
     STA PPUDATA
-    LDA #$05
+    LDA #$24
     STA PPUDATA
 
 
@@ -181,6 +200,9 @@ InitZombie_LoopX:
     STA sprite_zombie+SPRITE_TILE, x
     LDA #0
     STA sprite_zombie+SPRITE_ATTRIBUTE, x
+    LDA #1
+    STA zombie_info + Zombie_Direction, x
+    STA zombie_info + Zombie_Alive, x
     ; increment x by 4
     TXA
     CLC
@@ -203,10 +225,10 @@ InitZombie_LoopX:
     LDX #0
     LDA #Enemy_Team_Height * Enemy_Spacing
     STA temp_y
-InitZombie_0_LoopY:
+InitZombie_1_LoopY:
     LDA #Enemy_Team_Width * Enemy_Spacing
     STA temp_x
-InitZombie_0_LoopX:
+InitZombie_1_LoopX:
     STA sprite_zombie_1+SPRITE_X, x
     LDA temp_y
     STA sprite_zombie_1+SPRITE_Y, x
@@ -224,22 +246,97 @@ InitZombie_0_LoopX:
     SEC
     SBC #Enemy_Spacing
     STA temp_x
-    BNE InitZombie_0_LoopX
+    BNE InitZombie_1_LoopX
     ; loop check for y value
     LDA temp_y
     SEC
     SBC #Enemy_Spacing
     STA temp_y
-    BNE InitZombie_0_LoopY
+    BNE InitZombie_1_LoopY
 
+    ;Name Table Data_0
+    LDA #$20          ;Writing addres $2000 to PPUADDR
+    STA PPUADDR
+    LDA #$00
+    STA PPUADDR
+
+
+    LDA #LOW(NameTableData)
+    STA nametable_address
+    LDA #HIGH(NameTableData)
+    STA nametable_address+1
+LoadNameTable_OuterLoop:
+    LDX #0
+LoadNameTable_InnerLoop:
+    LDA [nametable_address], Y
+    BEQ LoadNametable_End
+    STA PPUDATA
+    INY
+    BNE LoadNameTable_InnerLoop
+    INC nametable_address+1
+    JMP LoadNameTable_OuterLoop
+LoadNametable_End:
+
+    ;Load attribute table
+    LDA #$23          ;Writing addres $23C0 to PPUADDR
+    STA PPUADDR
+    LDA #$C0
+    STA PPUADDR
+
+    LDA #%01010101
+    LDX #64
+LoadAttributes_Loop:
+    STA PPUDATA
+    DEX
+    BNE LoadAttributes_Loop
+
+
+  ;   ;Name Table Data_1
+  ;   LDA #$24          ;Writing addres $2400 to PPUADDR
+  ;   STA PPUADDR
+  ;   LDA #$00
+  ;   STA PPUADDR
+  ;
+  ;
+  ;   LDA #LOW(NameTableData)
+  ;   STA nametable_address
+  ;   LDA #HIGH(NameTableData)
+  ;   STA nametable_address+1
+  ; LoadNameTable2_OuterLoop:
+  ;   LDX #0
+  ; LoadNameTable2_InnerLoop:
+  ;   LDA [nametable_address], Y
+  ;   BEQ LoadNametable2_End
+  ;   STA PPUDATA
+  ;   INY
+  ;   BNE LoadNameTable2_InnerLoop
+  ;   INC nametable_address+1
+  ;   JMP LoadNameTable2_OuterLoop
+  ; LoadNametable2_End:
+  ;
+  ;   ;Load attribute table_1
+  ;   LDA #$27          ;Writing addres $27C0 to PPUADDR
+  ;   STA PPUADDR
+  ;   LDA #$C0
+  ;   STA PPUADDR
+  ;
+  ;   LDA #%01010101
+  ;   LDX #64
+  ; LoadAttributes2_Loop:
+  ;   STA PPUDATA
+  ;   DEX
+  ;   BNE LoadAttributes2_Loop
 
 
     LDA #%10000000 ; Enable Non Maskable interrupt(NMI)
     STA PPUCTRL
 
-    LDA #%00010000 ;Enable sprites
+    LDA #%00011000 ;Enable sprites and background
     STA PPUMASK
 
+    LDA #0
+    STA PPUSCROLL ; X scroll
+    STA PPUSCROLL ;Y scroll
 
     ;enter an infinite loop
 
@@ -282,7 +379,6 @@ ReadController:
     CLC
     ADC #1
     STA sprite_player + SPRITE_X
-
 
 ReadRight_Done:
 
@@ -352,56 +448,124 @@ ReadA_Done:
     ;if carry flag is clear, bullet has left the screen, destroy it
     LDA #0
     STA bullet_alive
+
 UpdateBullet_Done:
 
   ;Update zombies
   LDX #(NUM_Enemies-1) * 4
+
 UpdateEnemies_Loop:
+  ;check if enemy alive
+  LDA zombie_info+Zombie_Alive, x
+  BEQ UpdateZombie_Next
   LDA sprite_zombie+SPRITE_X, x
   CLC
-  ADC #1
+  ADC zombie_info + Zombie_Direction, x
   STA sprite_zombie+SPRITE_X, x
+  CMP #256 - Enemy_Spacing
+  BCS UpdateZombies_Reverse
+  CMP #Enemy_Spacing
+  BCC UpdateZombies_Reverse
+  JMP UpdateZombies_NoReverse
+
+UpdateZombies_Reverse:
+  ;Reverse direction
+  LDA #0
+  SEC
+  SBC zombie_info + Zombie_Direction, x
+  STA zombie_info + Zombie_Direction, x
+
+UpdateZombies_NoReverse:
+  ;check collision between enemy and bullet
+  LDA sprite_zombie + SPRITE_X, x ; calculate x postion of enemy - width of bullet
+  SEC
+  SBC #8                          ; Assume width is 8x8 sprites
+  CMP sprite_bullet + SPRITE_X    ; compare with x bullet
+  BCS UpdateEnemies_NoCollision
+  CLC
+  ADC #16
+  CMP sprite_bullet + SPRITE_X
+  BCC UpdateEnemies_NoCollision
+
+  LDA sprite_zombie + SPRITE_Y, x ; calculate y postion of enemy - width of bullet
+  SEC
+  SBC #8                          ; Assume width is 8x8 sprites
+  CMP sprite_bullet + SPRITE_Y    ; compare with y bullet
+  BCS UpdateEnemies_NoCollision
+  CLC
+  ADC #16
+  CMP sprite_bullet + SPRITE_Y
+  BCC UpdateEnemies_NoCollision
+  ; Handle collision
+  LDA #0
+  STA bullet_alive
+  STA zombie_info + Zombie_Alive, x            ;Destroy Bullet
+  LDA #$FF
+  STA sprite_bullet+SPRITE_Y
+  STA sprite_zombie+SPRITE_Y, x
+
+UpdateEnemies_NoCollision:
+
+  ; LDA scroll_x
+  ; CLC
+  ; ADC #1
+  ; STA scroll_x
+  ; STA PPUSCROLL
+  ; LDA #0
+  ; STA PPUSCROLL
+
+UpdateZombie_Next:
   DEX
   DEX
   DEX
   DEX
   BPL UpdateEnemies_Loop
 
-    ;check collision between enemy and bullet
-    ; LDA sprite_zombie + SPRITE_X, x ; calculate x postion of enemy - width of bullet
-    ; SEC
-    ; SBC #8                          ; Assume width is 8x8 sprites
-    ; CMP sprite_bullet + SPRITE_X    ; compare with x bullet
-    ; BCS UpdateEnemies_NoCollision
-    ; CLC
-    ; ADC #16
-    ; CMP sprite_bullet + SPRITE_X
-    ; BCC UpdateEnemies_NoCollision
-    ;
-    ; LDA sprite_zombie + SPRITE_Y, x ; calculate y postion of enemy - width of bullet
-    ; SEC
-    ; SBC #8                          ; Assume width is 8x8 sprites
-    ; CMP sprite_bullet + SPRITE_Y    ; compare with y bullet
-    ; BCS UpdateEnemies_NoCollision
-    ; CLC
-    ; ADC #16
-    ; CMP sprite_bullet + SPRITE_Y
-    ; BCC UpdateEnemies_NoCollision
-    ; ;Handle collision
-    ; LDA #0
-    ; STA bullet_alive                ;Destroy Bullet
-
-UpdateEnemies_NoCollision:
-
-    ;Copy sprite data to PPU
-    LDA #0
-    STA OAMADDR
-    LDA #$02
-    STA OAMDMA
+  ;Copy sprite data to PPU
+  LDA #0
+  STA OAMADDR
+  LDA #$02
+  STA OAMDMA
 
 
 
-    RTI         ; Return from interrupt
+  RTI         ; Return from interrupt
+
+; ---------------------------------------------------------------------------
+
+NameTableData:
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23,$20,$21,$22,$23
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13,$10,$11,$12,$13
+  .db $00 ;Null Terminator
+; ---------------------------------------------------------------------------
 
 ; ---------------------------------------------------------------------------
 
